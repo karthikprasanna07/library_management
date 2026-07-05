@@ -16,6 +16,7 @@ public class Main {
         } else {
             System.out.println("Connection Failed!");
         }
-
+        BookManagement book = new BookManagement();
+        book.viewBooks();
     }
 }
