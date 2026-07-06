@@ -5,25 +5,16 @@ public class Main {
 
     public static void main(String[] args) {
 
-        Connection con = DBConnection.getConnection();
-
-        if (con != null) {
-            System.out.println("Connected Successfully!");
-            try {
-                con.close();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        } else {
-            System.out.println("Connection Failed!");
-        }
         Scanner sc = new Scanner(System.in);
 
+        Dashboard dashboard = new Dashboard();
         BookManagement book = new BookManagement();
         MemberManagement member = new MemberManagement();
         IssueBookManagement issue = new IssueBookManagement();
 
         while (true) {
+
+            dashboard.showDashboard();
 
             System.out.println("\n==========================================");
             System.out.println("      LIBRARY MANAGEMENT SYSTEM");

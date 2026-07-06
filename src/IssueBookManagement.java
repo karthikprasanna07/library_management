@@ -3,6 +3,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Types;
 import java.util.Scanner;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 
 public class IssueBookManagement {
 
@@ -24,6 +26,10 @@ public class IssueBookManagement {
 
             System.out.print("Enter Issue Date (YYYY-MM-DD) : ");
             String issueDate = sc.nextLine();
+
+            // fine calculation
+            LocalDate issue = LocalDate.parse(issueDate);
+            LocalDate due = issue.plusDays(10); // 10 days from the issue date
 
             Connection con = DBConnection.getConnection();
 
@@ -61,7 +67,8 @@ public class IssueBookManagement {
             }
 
             // Insert Issue Record
-            String issueSql = "INSERT INTO issue_books(issue_id,book_id,member_id,issue_date,return_date,status) VALUES(?,?,?,?,?,?)";
+            String issueSql =
+                    "INSERT INTO issue_books(issue_id,book_id,member_id,issue_date,due_date,return_date,status,fine) VALUES(?,?,?,?,?,?,?,?)";
 
             PreparedStatement psIssue = con.prepareStatement(issueSql);
 
@@ -69,8 +76,10 @@ public class IssueBookManagement {
             psIssue.setInt(2, bookId);
             psIssue.setInt(3, memberId);
             psIssue.setString(4, issueDate);
-            psIssue.setNull(5, Types.DATE);
-            psIssue.setString(6, "Issued");
+            psIssue.setString(5, due.toString());
+            psIssue.setNull(6, Types.DATE);
+            psIssue.setString(7, "Issued");
+            psIssue.setDouble(8, 0);
 
             psIssue.executeUpdate();
 
@@ -84,6 +93,8 @@ public class IssueBookManagement {
             psUpdate.executeUpdate();
 
             System.out.println("Book Issued Successfully!");
+
+            System.out.println("Due Date : " + due); // displays due date
 
             rsBook.close();
             rsMember.close();
@@ -113,18 +124,20 @@ public class IssueBookManagement {
 
             ResultSet rs = ps.executeQuery();
 
-            System.out.printf("%-10s %-10s %-10s %-15s %-15s %-15s%n",
-                    "IssueID", "BookID", "MemberID", "IssueDate", "ReturnDate", "Status");
+            System.out.printf("%-8s %-8s %-10s %-12s %-12s %-12s %-10s %-8s%n",
+                    "IssueID","BookID","MemberID","IssueDate","DueDate","Return","Status","Fine");
 
             while (rs.next()) {
 
-                System.out.printf("%-10d %-10d %-10d %-15s %-15s %-15s%n",
+                System.out.printf("%-8d %-8d %-10d %-12s %-12s %-12s %-10s %-8.2f%n",
                         rs.getInt("issue_id"),
                         rs.getInt("book_id"),
                         rs.getInt("member_id"),
                         rs.getString("issue_date"),
+                        rs.getString("due_date"),
                         rs.getString("return_date"),
-                        rs.getString("status"));
+                        rs.getString("status"),
+                        rs.getDouble("fine"));
 
             }
 
@@ -152,7 +165,8 @@ public class IssueBookManagement {
             Connection con = DBConnection.getConnection();
 
             // Find Book ID
-            String findBook = "SELECT book_id FROM issue_books WHERE issue_id=?";
+            String findBook =
+                    "SELECT book_id,due_date,status FROM issue_books WHERE issue_id=?";
 
             PreparedStatement psFind = con.prepareStatement(findBook);
 
@@ -170,13 +184,39 @@ public class IssueBookManagement {
 
             int bookId = rs.getInt("book_id");
 
+            String status = rs.getString("status");
+
+            if(status.equalsIgnoreCase("Returned")){
+
+                System.out.println("Book already returned.");
+
+                return;
+
+            }
+
+            LocalDate dueDate = LocalDate.parse(rs.getString("due_date"));
+
+            LocalDate returnedDate = LocalDate.parse(returnDate);
+
+            long lateDays = ChronoUnit.DAYS.between(dueDate, returnedDate);
+
+            double fine = 0;
+
+            if(lateDays > 0){
+
+                fine = lateDays * 5;
+
+            }
+
             // Update Issue Record
-            String updateIssue = "UPDATE issue_books SET return_date=?, status='Returned' WHERE issue_id=?";
+            String updateIssue =
+                    "UPDATE issue_books SET return_date=?, status='Returned', fine=? WHERE issue_id=?";
 
             PreparedStatement psIssue = con.prepareStatement(updateIssue);
 
             psIssue.setString(1, returnDate);
-            psIssue.setInt(2, issueId);
+            psIssue.setDouble(2, fine);
+            psIssue.setInt(3, issueId);
 
             psIssue.executeUpdate();
 
@@ -189,7 +229,24 @@ public class IssueBookManagement {
 
             psBook.executeUpdate();
 
-            System.out.println("Book Returned Successfully!");
+            System.out.println("\nBook Returned Successfully!");
+
+            System.out.println("Due Date      : " + dueDate);
+
+            System.out.println("Return Date   : " + returnedDate);
+
+            if(fine==0){
+
+                System.out.println("Returned On Time");
+
+            }
+            else{
+
+                System.out.println("Late Days     : " + lateDays);
+
+                System.out.println("Fine Amount   : ₹" + fine);
+
+            }
 
             rs.close();
             psFind.close();
