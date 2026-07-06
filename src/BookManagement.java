@@ -30,8 +30,18 @@ public class BookManagement {
             System.out.print("Enter Price : ");
             double price = sc.nextDouble();
 
+            if (price <= 0) {
+                System.out.println("Price must be greater than 0.");
+                return;
+            }
+
             System.out.print("Enter Quantity : ");
             int quantity = sc.nextInt();
+
+            if (quantity < 0) {
+                System.out.println("Quantity cannot be negative.");
+                return;
+            }
 
             // Get Database Connection
             Connection con = DBConnection.getConnection();
